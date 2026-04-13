@@ -12,10 +12,10 @@ export default function HomePage() {
         
         <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight">
           <span className="bg-gradient-to-b from-fd-foreground to-fd-muted-foreground bg-clip-text text-transparent">
-            E-Commerce CRM
+          <span className="text-fd-primary">Briefly</span> CRM Docs
           </span>
           <br />
-          <span className="text-fd-primary">Documentation</span>
+          
         </h1>
         
         <p className="text-lg md:text-xl text-fd-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">

@@ -1,0 +1,5 @@
+{
+  "index": "index",
+  "title": "API Documentation",
+  "pages": ["index", "listCustomers", "createCustomer", "getCustomer", "updateCustomer", "deleteCustomer", "listProducts", "createProduct", "getProduct", "updateProduct", "deleteProduct", "listOrders", "createOrder", "getOrder", "updateOrder", "deleteOrder", "listSegments", "createSegment", "getSegment", "updateSegment", "deleteSegment", "listIntegrations", "connectShopify", "testConnection", "registerWebhooks", "listImportJobs", "createImportJob", "listExportJobs", "createExportJob", "triggerRFMJob", "triggerLifecycleJob", "triggerRFMCompute", "triggerFullSync", "triggerVipJob", "runCleanupIdempotencyJob"]
+}
