@@ -1,0 +1,271 @@
+---
+title: Error Handling
+description: Error handling patterns, error codes, and HTTP status references for Briefly CRM.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Error Handling
+
+Briefly CRM uses a standardized error handling system with consistent error responses across all endpoints.
+
+## Error Response Format
+
+All errors follow a consistent format:
+
+```json
+{
+    "message": "Error description",
+    "code": "ERROR_CODE",
+    "status": 400,
+    "timestamp": "2024-01-15T10:30:00Z",
+    "path": "POST /api/customers",
+    "details": {
+        "field": "Error message"
+    }
+}
+```
+
+## HTTP Status Codes
+
+| Status | Description                              |
+| ------ | ---------------------------------------- |
+| `200`  | Success                                  |
+| `201`  | Created                                  |
+| `400`  | Bad Request - Invalid input              |
+| `401`  | Unauthorized - Invalid or missing token  |
+| `403`  | Forbidden - Insufficient permissions     |
+| `404`  | Not Found - Resource doesn't exist       |
+| `409`  | Conflict - Duplicate or conflict         |
+| `422`  | Unprocessable Entity - Validation failed |
+| `429`  | Too Many Requests - Rate limit exceeded  |
+| `500`  | Internal Server Error                    |
+
+## Error Codes
+
+| Code                   | Status | Description                       |
+| ---------------------- | ------ | --------------------------------- |
+| `VALIDATION_ERROR`     | 400    | Request validation failed         |
+| `AUTHENTICATION_ERROR` | 401    | Invalid or missing authentication |
+| `AUTHORIZATION_ERROR`  | 403    | Insufficient permissions          |
+| `RESOURCE_NOT_FOUND`   | 404    | Requested resource doesn't exist  |
+| `DUPLICATE_ERROR`      | 409    | Resource already exists           |
+| `RATE_LIMIT_ERROR`     | 429    | Too many requests                 |
+| `SERVER_ERROR`         | 500    | Internal server error             |
+
+## Custom Error Classes
+
+The system defines custom error classes in `src/errors/index.ts`:
+
+### AppError
+
+Base error class for all application errors:
+
+```typescript
+throw new AppError('Something went wrong', 'SERVER_ERROR', 500);
+```
+
+### AuthenticationError
+
+For authentication failures:
+
+```typescript
+throw new AuthenticationError('Invalid credentials');
+```
+
+### AuthorizationError
+
+For permission failures:
+
+```typescript
+throw new AuthorizationError('Insufficient permissions');
+```
+
+### NotFoundError
+
+For missing resources:
+
+```typescript
+throw new NotFoundError('Customer not found');
+```
+
+## Validation Errors
+
+Validation errors return field-specific details:
+
+```json
+{
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "status": 400,
+    "details": {
+        "email": "Invalid email format",
+        "name": "Name is required"
+    }
+}
+```
+
+### Zod Validation
+
+Request validation uses Zod schemas:
+
+```typescript
+const createCustomerSchema = z.object({
+    email: z.string().email(),
+    name: z.string().min(1),
+    phone: z.string().optional()
+});
+```
+
+Invalid data returns 400 with validation details.
+
+## Handling Errors
+
+### Middleware
+
+Errors are handled by the error middleware:
+
+```typescript
+// src/middlewares/error.middleware.ts
+export const errorHandler = (err, req, res) => {
+    if (err instanceof AppError) {
+        return ResponseHandler.error(res, err.message, err.code, err.status);
+    }
+
+    if (err.name === 'ZodError') {
+        // Handle validation errors
+    }
+
+    // Handle generic errors
+    return ResponseHandler.error(res, 'An error occurred', 'SERVER_ERROR', 500);
+};
+```
+
+### Async Handler
+
+Wrap async route handlers with `asyncHandler`:
+
+```typescript
+router.post(
+    '/customers',
+    asyncHandler(async (req, res) => {
+        const customer = await createCustomer(req.body);
+        ResponseHandler.success(res, customer, 201);
+    })
+);
+```
+
+## Error Logging
+
+Errors are logged with context:
+
+```typescript
+logger.error(`[${err.code}] ${err.message} - Path: ${path}`);
+```
+
+In production, set `NODE_ENV=production` to hide error details.
+
+## Rate Limiting Errors
+
+When rate limit is exceeded:
+
+```json
+{
+    "message": "Too many requests",
+    "code": "RATE_LIMIT_ERROR",
+    "status": 429
+}
+```
+
+## Webhook Errors
+
+Webhook processing errors are logged and tracked:
+
+```json
+{
+    "topic": "orders/create",
+    "status": "failed",
+    "error": "Customer not found"
+}
+```
+
+## Database Errors
+
+Prisma errors are handled and converted to API errors:
+
+```json
+{
+    "message": "Record not found",
+    "code": "RESOURCE_NOT_FOUND",
+    "status": 404
+}
+```
+
+## Best Practices
+
+### Throwing Errors
+
+Use appropriate error classes:
+
+```typescript
+// Authentication
+throw new AuthenticationError('Invalid token');
+
+// Authorization
+throw new AuthorizationError('Cannot delete customers');
+
+// Not found
+throw new NotFoundError(`Customer ${id} not found`);
+```
+
+### Error Context
+
+Include relevant context:
+
+```typescript
+throw new AppError(
+    `Failed to process import job ${jobId}`,
+    'IMPORT_ERROR',
+    500
+);
+```
+
+### Async Errors
+
+Use asyncHandler for route handlers:
+
+```typescript
+router.get('/customers/:id', asyncHandler(getCustomer));
+```
+
+## Debugging
+
+### Development Mode
+
+In development, full error messages are returned:
+
+```json
+{
+    "message": "Detailed error message"
+}
+```
+
+### Production Mode
+
+In production, generic messages are shown:
+
+```json
+{
+    "message": "An error occurred"
+}
+```
+
+Set `NODE_ENV=production` to enable.
+
+### Logging
+
+Check server logs for detailed error information:
+
+```bash
+bun run dev  # Logs show stack traces
+```

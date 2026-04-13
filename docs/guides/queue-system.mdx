@@ -1,0 +1,191 @@
+---
+title: Queue System
+description: Background job processing with BullMQ, error handling, and Redis integration.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Queue System
+
+Briefly CRM uses BullMQ with Redis to process background jobs asynchronously. This allows long-running tasks like RFM scoring and data imports to run without blocking the API.
+
+<Callout title="Redis Requirement">
+    Redis must be running for background jobs to process asynchronously. Without
+    Redis, jobs run synchronously as a fallback.
+</Callout>
+
+## Architecture
+
+The queue system consists of two components:
+
+- **Producers** add jobs to the queue after receiving API requests
+- **Workers** consume jobs from the queue and process them
+
+### Available Queues
+
+| Queue Name        | Purpose                 | Processor          |
+| ----------------- | ----------------------- | ------------------ |
+| `import-queue`    | Data imports (CSV/XLSX) | `import.queue.ts`  |
+| `rfm-score-queue` | RFM scoring             | `rfm.processor.ts` |
+
+## How Jobs Work
+
+### Import Queue
+
+When you create an import job:
+
+1. The file is uploaded and stored temporarily
+2. A job record is created in the database with status `PENDING`
+3. The job is added to `import-queue` via BullMQ
+4. The worker picks up the job and processes rows in batches
+5. Each row is validated and created/updated in the database
+6. Errors are logged to `ImportJobError` records
+7. The job status is updated to `COMPLETED`, `FAILED`, or `PARTIALLY_FAILED`
+
+```typescript
+// Adding a job to the queue
+await importQueue.add('process-import', {
+    jobId: job.id,
+    filePath: tempFilePath,
+    entityType,
+    organizationId,
+    duplicateStrategy
+});
+```
+
+### RFM Queue
+
+RFM scoring can be triggered for:
+
+- All customers in an organization
+- A single customer (after order creation)
+
+```typescript
+// Trigger RFM for entire organization
+await addRFMScoreJob(organizationId);
+
+// Trigger RFM for single customer
+await addRFMScoreJob(organizationId, undefined, customerId);
+```
+
+## Fallback Behavior
+
+If Redis is not available, jobs process synchronously:
+
+```typescript
+// Without Redis, this fallback runs immediately
+if (isRedisAvailable && importQueue) {
+    await importQueue.add('process-import', { ... });
+} else {
+    // Process synchronously
+    processImportJob(job.id, rows, entityType, organizationId, strategy);
+}
+```
+
+This ensures the API remains functional even without Redis.
+
+## Error Handling
+
+### Import Errors
+
+Failed rows are logged with error details:
+
+```typescript
+const errorData = {
+    importJobId: jobId,
+    rowNumber: row.rowNumber,
+    errorCode: 'VALIDATION_ERROR',
+    message: errorMessage,
+    rawRow: row.data
+};
+
+await prisma.importJobError.create({ data: errorData });
+```
+
+You can retrieve errors from the API:
+
+```http
+GET /imports/:jobId/errors
+```
+
+### Job Failures
+
+If a job fails completely, the status is set to `FAILED`:
+
+```json
+{
+    "status": "FAILED",
+    "completedAt": "2024-01-15T10:30:00Z",
+    "successfulRows": 0,
+    "failedRows": 100
+}
+```
+
+## Monitoring
+
+Check queue health via the API:
+
+```http
+GET /imports              # List import jobs
+GET /imports/:jobId       # Get job status
+```
+
+### Job Statuses
+
+| Status             | Description                        |
+| ------------------ | ---------------------------------- |
+| `PENDING`          | Job created, not yet started       |
+| `PROCESSING`       | Worker is processing rows          |
+| `COMPLETED`        | All rows imported successfully     |
+| `PARTIALLY_FAILED` | Some rows failed, others succeeded |
+| `FAILED`           | All rows failed                    |
+
+## Batch Processing
+
+Jobs process rows in batches to manage memory:
+
+```typescript
+const BATCH_SIZE = {
+    customer: 50,
+    order: 100,
+    product: 100
+};
+
+for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    // Process batch
+}
+```
+
+## Concurrency
+
+The import worker processes multiple jobs concurrently:
+
+```typescript
+new Worker('import-queue', async (job) => { ... }, {
+    connection: redisConnection,
+    concurrency: 5  // 5 concurrent workers
+});
+```
+
+## Best Practices
+
+- Monitor job completion via the API
+- Check error records for validation issues
+- Use the synchronous fallback for testing
+- Set up monitoring for Redis connectivity
+- Review failed jobs and re-import after fixing data
+
+## Troubleshooting
+
+### Job stuck in PROCESSING
+
+Check worker logs for errors. The job may have crashed before completion.
+
+### High failure rate
+
+Validate your import file format and mapping before uploading.
+
+### Redis connection issues
+
+Ensure Redis is running and accessible. Jobs will process synchronously without it.

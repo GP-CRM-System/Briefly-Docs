@@ -1,0 +1,2264 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "E-Commerce CRM API",
+        "description": "High-performance, multi-tenant CRM backend for e-commerce businesses.\n\n## Features\n- Customer management with RFM scoring and lifecycle tracking\n- Order and product catalog management\n- CSV/XLSX import/export with field mapping\n- Shopify integration with webhook sync\n- Role-based access control (RBAC)\n- Background job processing with BullMQ\n\n## Authentication\nAll endpoints require Bearer token authentication. Get a token from `/api/auth/sign-in/email`.\n\n## Rate Limits\n- Auth endpoints: 10 requests/minute\n- API endpoints: 100 requests/minute\n- Bulk operations: 20 requests/minute",
+        "version": "2.0.0",
+        "contact": {
+            "name": "API Support",
+            "url": "https://github.com/seifsheikhelarab/E-Commerce-CRM"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        }
+    },
+    "servers": [
+        {
+            "url": "/api",
+            "description": "Main API server"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Customers",
+            "description": "Customer management, notes, events, and RFM analytics"
+        },
+        {
+            "name": "Products",
+            "description": "Product catalog management"
+        },
+        {
+            "name": "Orders",
+            "description": "Order management and fulfillment"
+        },
+        {
+            "name": "Segments",
+            "description": "Customer segmentation and grouping"
+        },
+        {
+            "name": "Imports",
+            "description": "CSV/XLSX import jobs"
+        },
+        {
+            "name": "Exports",
+            "description": "CSV/XLSX export jobs"
+        },
+        {
+            "name": "Roles",
+            "description": "Custom role and permission management"
+        },
+        {
+            "name": "Integrations",
+            "description": "Shopify store connections"
+        },
+        {
+            "name": "Sync",
+            "description": "Data synchronization operations"
+        },
+        {
+            "name": "Webhooks",
+            "description": "Webhook handling and logging"
+        },
+        {
+            "name": "Cron",
+            "description": "Manual triggers for RFM and lifecycle recalculations"
+        }
+    ],
+    "paths": {
+        "/customers": {
+            "get": {
+                "operationId": "listCustomers",
+                "summary": "List all customers",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1 }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 20 }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "default": "createdAt" }
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["asc", "desc"],
+                            "default": "desc"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "source",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "segmentId",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of customers" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "post": {
+                "operationId": "createCustomer",
+                "summary": "Create a new customer",
+                "tags": ["Customers"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["name"],
+                                "properties": {
+                                    "name": { "type": "string" },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "phone": { "type": "string" },
+                                    "city": { "type": "string" },
+                                    "address": { "type": "string" },
+                                    "source": {
+                                        "type": "string",
+                                        "enum": [
+                                            "WEBSITE",
+                                            "SOCIAL",
+                                            "REFERRAL",
+                                            "ORGANIC",
+                                            "EMAIL",
+                                            "CAMPAIGN",
+                                            "OTHER"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Customer created" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/customers/{id}": {
+            "get": {
+                "operationId": "getCustomer",
+                "summary": "Get customer by ID",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Customer details" },
+                    "404": { "description": "Customer not found" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "put": {
+                "operationId": "updateCustomer",
+                "summary": "Update customer",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": { "type": "string" },
+                                    "email": { "type": "string" },
+                                    "phone": { "type": "string" },
+                                    "city": { "type": "string" },
+                                    "address": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Customer updated" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "delete": {
+                "operationId": "deleteCustomer",
+                "summary": "Delete customer",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Customer deleted" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/customers/{id}/notes": {
+            "get": {
+                "operationId": "getCustomerNotes",
+                "summary": "Get customer notes",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of notes" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "post": {
+                "operationId": "createNote",
+                "summary": "Create a note for customer",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["body"],
+                                "properties": { "body": { "type": "string" } }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Note created" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/customers/{id}/notes/{noteId}": {
+            "put": {
+                "operationId": "updateNote",
+                "summary": "Update customer note",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": { "body": { "type": "string" } }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Note updated" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "delete": {
+                "operationId": "deleteNote",
+                "summary": "Delete customer note",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Note deleted" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/customers/{id}/events": {
+            "get": {
+                "operationId": "getCustomerEvents",
+                "summary": "Get customer events",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of events" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "post": {
+                "operationId": "createEvent",
+                "summary": "Create an event for customer",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["eventType", "description"],
+                                "properties": {
+                                    "eventType": { "type": "string" },
+                                    "description": { "type": "string" },
+                                    "metadata": { "type": "object" },
+                                    "source": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Event created" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/customers/{id}/events/{eventId}": {
+            "put": {
+                "operationId": "updateEvent",
+                "summary": "Update customer event",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "eventId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "eventType": { "type": "string" },
+                                    "description": { "type": "string" },
+                                    "metadata": { "type": "object" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Event updated" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "delete": {
+                "operationId": "deleteEvent",
+                "summary": "Delete customer event",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "eventId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Event deleted" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/customers/analytics/compute": {
+            "post": {
+                "operationId": "triggerRFMCompute",
+                "summary": "Trigger RFM computation",
+                "tags": ["Customers"],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "daysWindow": {
+                                        "type": "integer",
+                                        "default": 90
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "RFM computation completed" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/customers/analytics/rfm": {
+            "get": {
+                "operationId": "getRFMStats",
+                "summary": "Get RFM segment distribution",
+                "tags": ["Customers"],
+                "responses": {
+                    "200": { "description": "RFM distribution fetched" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/customers/{id}/analytics": {
+            "get": {
+                "operationId": "getCustomerAnalytics",
+                "summary": "Get customer-specific analytics",
+                "tags": ["Customers"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Customer analytics fetched" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/cron/rfm": {
+            "post": {
+                "operationId": "triggerRFMJob",
+                "summary": "Trigger RFM score recalculation",
+                "tags": ["Cron"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TriggerRFMJobRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": { "description": "RFM job queued" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/cron/lifecycle": {
+            "post": {
+                "operationId": "triggerLifecycleJob",
+                "summary": "Trigger lifecycle stage recalculation",
+                "tags": ["Cron"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TriggerLifecycleJobRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": { "description": "Lifecycle check complete" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/cron/vip": {
+            "post": {
+                "operationId": "triggerVipJob",
+                "summary": "Trigger VIP status recalculation",
+                "tags": ["Cron"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TriggerVipJobRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": { "description": "VIP recalculation complete" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/cron/cleanup/idempotency": {
+            "post": {
+                "operationId": "runCleanupIdempotencyJob",
+                "summary": "Cleanup expired webhook idempotency keys",
+                "tags": ["Cron"],
+                "responses": {
+                    "200": { "description": "Cleanup complete" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/integrations": {
+            "get": {
+                "operationId": "listIntegrations",
+                "summary": "List all integrations",
+                "tags": ["Integrations"],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["shopify"] }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of integrations" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/integrations/shopify/connect": {
+            "post": {
+                "operationId": "connectShopify",
+                "summary": "Connect a Shopify store",
+                "tags": ["Integrations"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["shopDomain", "accessToken"],
+                                "properties": {
+                                    "shopDomain": { "type": "string" },
+                                    "accessToken": { "type": "string" },
+                                    "name": { "type": "string" },
+                                    "apiSecret": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Shopify store connected" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/integrations/{integrationId}": {
+            "get": {
+                "operationId": "getIntegration",
+                "summary": "Get integration by ID",
+                "tags": ["Integrations"],
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Integration details" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "patch": {
+                "operationId": "updateIntegration",
+                "summary": "Update integration",
+                "tags": ["Integrations"],
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": { "type": "string" },
+                                    "syncMode": {
+                                        "type": "string",
+                                        "enum": ["webhook", "polling", "manual"]
+                                    },
+                                    "isActive": { "type": "boolean" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Integration updated" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "delete": {
+                "operationId": "deleteIntegration",
+                "summary": "Delete integration",
+                "tags": ["Integrations"],
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Integration deleted" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/integrations/{integrationId}/test-connection": {
+            "post": {
+                "operationId": "testConnection",
+                "summary": "Test integration connection",
+                "tags": ["Integrations"],
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Connection test result" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/integrations/{integrationId}/webhooks/register": {
+            "post": {
+                "operationId": "registerWebhooks",
+                "summary": "Register Shopify webhooks",
+                "tags": ["Integrations"],
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["topics"],
+                                "properties": {
+                                    "topics": {
+                                        "type": "array",
+                                        "items": { "type": "string" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Webhooks registered" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/integrations/{integrationId}/sync/full": {
+            "post": {
+                "operationId": "triggerFullSync",
+                "summary": "Trigger full data sync",
+                "tags": ["Sync"],
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "entities": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "enum": [
+                                                "customers",
+                                                "orders",
+                                                "products"
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Sync completed" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/integrations/{integrationId}/sync/logs": {
+            "get": {
+                "operationId": "getSyncLogs",
+                "summary": "Get sync logs",
+                "tags": ["Sync"],
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Sync logs" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/webhooks/shopify/{integrationId}": {
+            "post": {
+                "operationId": "handleShopifyWebhook",
+                "summary": "Handle Shopify webhook",
+                "tags": ["Webhooks"],
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Webhook received" }
+                }
+            }
+        },
+        "/webhooks/{integrationId}/logs": {
+            "get": {
+                "operationId": "getWebhookLogs",
+                "summary": "Get webhook logs",
+                "tags": ["Webhooks"],
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Webhook logs" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/segments": {
+            "get": {
+                "operationId": "listSegments",
+                "summary": "List all segments",
+                "tags": ["Segments"],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 50 }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 0 }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of segments" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "post": {
+                "operationId": "createSegment",
+                "summary": "Create a new segment",
+                "tags": ["Segments"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSegmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Segment created" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/segments/{id}": {
+            "get": {
+                "operationId": "getSegment",
+                "summary": "Get segment by ID",
+                "tags": ["Segments"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Segment details" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "patch": {
+                "operationId": "updateSegment",
+                "summary": "Update segment",
+                "tags": ["Segments"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateSegmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Segment updated" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "delete": {
+                "operationId": "deleteSegment",
+                "summary": "Delete segment",
+                "tags": ["Segments"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "204": { "description": "Segment deleted" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/segments/{id}/customers": {
+            "get": {
+                "operationId": "getSegmentCustomers",
+                "summary": "Get customers in segment",
+                "tags": ["Segments"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 50 }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 0 }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of customers" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/segments/{id}/count": {
+            "get": {
+                "operationId": "getSegmentCount",
+                "summary": "Get number of customers in segment",
+                "tags": ["Segments"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Segment count" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/segments/{id}/preview": {
+            "get": {
+                "operationId": "previewSegment",
+                "summary": "Get sample of customers in segment",
+                "tags": ["Segments"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Segment preview" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/segments/{id}/export": {
+            "post": {
+                "operationId": "exportSegment",
+                "summary": "Export segment customers",
+                "tags": ["Segments"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "format": {
+                                        "type": "string",
+                                        "enum": ["csv", "xlsx"],
+                                        "default": "csv"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": { "description": "Export job accepted" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/products": {
+            "get": {
+                "operationId": "listProducts",
+                "summary": "List all products",
+                "tags": ["Products"],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1 }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 20 }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "default": "createdAt" }
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["asc", "desc"],
+                            "default": "desc"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of products" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "post": {
+                "operationId": "createProduct",
+                "summary": "Create a new product",
+                "tags": ["Products"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["name", "price"],
+                                "properties": {
+                                    "name": { "type": "string" },
+                                    "price": { "type": "number" },
+                                    "description": { "type": "string" },
+                                    "sku": { "type": "string" },
+                                    "category": { "type": "string" },
+                                    "inventory": { "type": "integer" },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": ["active", "draft", "archived"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Product created" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/products/{id}": {
+            "get": {
+                "operationId": "getProduct",
+                "summary": "Get a product by ID",
+                "tags": ["Products"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Product details" },
+                    "404": { "description": "Product not found" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "put": {
+                "operationId": "updateProduct",
+                "summary": "Update a product",
+                "tags": ["Products"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "type": "object" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Product updated" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "delete": {
+                "operationId": "deleteProduct",
+                "summary": "Delete a product",
+                "tags": ["Products"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Product deleted" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/orders": {
+            "get": {
+                "operationId": "listOrders",
+                "summary": "List all orders",
+                "tags": ["Orders"],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1 }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 20 }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "default": "createdAt" }
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["asc", "desc"],
+                            "default": "desc"
+                        }
+                    },
+                    {
+                        "name": "customerId",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "minAmount",
+                        "in": "query",
+                        "schema": { "type": "number" }
+                    },
+                    {
+                        "name": "maxAmount",
+                        "in": "query",
+                        "schema": { "type": "number" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of orders" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "post": {
+                "operationId": "createOrder",
+                "summary": "Create a new order",
+                "tags": ["Orders"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["customerId"],
+                                "properties": {
+                                    "customerId": { "type": "string" },
+                                    "externalId": { "type": "string" },
+                                    "subtotal": { "type": "number" },
+                                    "taxAmount": { "type": "number" },
+                                    "shippingAmount": { "type": "number" },
+                                    "totalAmount": { "type": "number" },
+                                    "currency": { "type": "string" },
+                                    "fulfillmentStatus": { "type": "string" },
+                                    "note": { "type": "string" },
+                                    "source": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Order created" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/orders/{id}": {
+            "get": {
+                "operationId": "getOrder",
+                "summary": "Get an order by ID",
+                "tags": ["Orders"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Order details" },
+                    "404": { "description": "Order not found" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "put": {
+                "operationId": "updateOrder",
+                "summary": "Update an order",
+                "tags": ["Orders"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "type": "object" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Order updated" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "delete": {
+                "operationId": "deleteOrder",
+                "summary": "Delete an order",
+                "tags": ["Orders"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Order deleted" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/imports": {
+            "get": {
+                "operationId": "listImportJobs",
+                "summary": "List import jobs",
+                "tags": ["Imports"],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1 }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 20 }
+                    },
+                    {
+                        "name": "entityType",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["customer", "product", "order"]
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "PENDING",
+                                "PROCESSING",
+                                "COMPLETED",
+                                "FAILED",
+                                "PARTIALLY_FAILED",
+                                "CANCELLED"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of import jobs" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "post": {
+                "operationId": "createImportJob",
+                "summary": "Create and start an import job",
+                "tags": ["Imports"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["entityType", "file"],
+                                "properties": {
+                                    "entityType": {
+                                        "type": "string",
+                                        "enum": ["customer", "product", "order"]
+                                    },
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "hasHeader": { "type": "boolean" },
+                                    "mapping": { "type": "string" },
+                                    "duplicateStrategy": {
+                                        "type": "string",
+                                        "enum": ["create_only", "upsert"]
+                                    },
+                                    "mode": {
+                                        "type": "string",
+                                        "enum": ["create_only", "upsert"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Import job created" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/imports/{id}": {
+            "get": {
+                "operationId": "getImportJob",
+                "summary": "Get an import job by ID",
+                "tags": ["Imports"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Import job details" },
+                    "404": { "description": "Import job not found" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/imports/{id}/errors": {
+            "get": {
+                "operationId": "getImportErrors",
+                "summary": "Get import job errors",
+                "tags": ["Imports"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1 }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 100 }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of import errors" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/exports": {
+            "get": {
+                "operationId": "listExportJobs",
+                "summary": "List export jobs",
+                "tags": ["Exports"],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1 }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 20 }
+                    },
+                    {
+                        "name": "entityType",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["customer", "product", "order"]
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "PENDING",
+                                "PROCESSING",
+                                "COMPLETED",
+                                "FAILED"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "List of export jobs" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "post": {
+                "operationId": "createExportJob",
+                "summary": "Create and start an export job",
+                "tags": ["Exports"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["entityType", "format"],
+                                "properties": {
+                                    "entityType": {
+                                        "type": "string",
+                                        "enum": ["customer", "product", "order"]
+                                    },
+                                    "format": {
+                                        "type": "string",
+                                        "enum": ["csv", "xlsx"]
+                                    },
+                                    "selectedColumns": {
+                                        "type": "array",
+                                        "items": { "type": "string" }
+                                    },
+                                    "filters": { "type": "object" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Export job created" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/exports/{id}": {
+            "get": {
+                "operationId": "getExportJob",
+                "summary": "Get an export job by ID",
+                "tags": ["Exports"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Export job details" },
+                    "404": { "description": "Export job not found" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/exports/{id}/download": {
+            "get": {
+                "operationId": "downloadExport",
+                "summary": "Download export file",
+                "tags": ["Exports"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Export file",
+                        "content": { "application/octet-stream": {} }
+                    },
+                    "404": { "description": "Export not ready or not found" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/roles/permissions": {
+            "get": {
+                "operationId": "getPermissions",
+                "summary": "Get available permissions",
+                "tags": ["Roles"],
+                "responses": {
+                    "200": {
+                        "description": "List of available permissions",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "array",
+                                        "items": { "type": "string" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/roles": {
+            "get": {
+                "operationId": "listCustomRoles",
+                "summary": "List all custom roles",
+                "tags": ["Roles"],
+                "responses": {
+                    "200": {
+                        "description": "List of roles",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "default": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Role"
+                                            }
+                                        },
+                                        "custom": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Role"
+                                            }
+                                        },
+                                        "all": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Role"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "post": {
+                "operationId": "createCustomRole",
+                "summary": "Create a custom role",
+                "tags": ["Roles"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateRoleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Role created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Role"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or reserved role name"
+                    },
+                    "403": { "description": "Insufficient permissions" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        },
+        "/roles/{id}": {
+            "get": {
+                "operationId": "getCustomRole",
+                "summary": "Get a specific custom role",
+                "tags": ["Roles"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Role"
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Role not found" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "patch": {
+                "operationId": "updateCustomRole",
+                "summary": "Update a custom role",
+                "tags": ["Roles"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateRoleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Role updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Role"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or cannot modify default roles"
+                    },
+                    "404": { "description": "Role not found" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            },
+            "delete": {
+                "operationId": "deleteCustomRole",
+                "summary": "Delete a custom role",
+                "tags": ["Roles"],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "Role deleted" },
+                    "400": { "description": "Cannot delete default roles" },
+                    "404": { "description": "Role not found" }
+                },
+                "security": [{ "bearerAuth": [] }]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "JWT token from Better Auth sign-in endpoint"
+            }
+        },
+        "schemas": {
+            "Error": {
+                "type": "object",
+                "required": ["message", "code"],
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Human-readable error message"
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Error code for programmatic handling"
+                    },
+                    "details": {
+                        "type": "object",
+                        "description": "Field-specific validation errors",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Request path that caused the error"
+                    }
+                }
+            },
+            "SuccessResponse": {
+                "type": "object",
+                "required": ["message", "data"],
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "type": "object"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "path": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Pagination": {
+                "type": "object",
+                "required": ["page", "limit", "total"],
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 1
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "default": 20
+                    },
+                    "total": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                }
+            },
+            "Customer": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "phone": { "type": "string" },
+                    "city": { "type": "string" },
+                    "address": { "type": "string" },
+                    "source": {
+                        "type": "string",
+                        "enum": [
+                            "WEBSITE",
+                            "SOCIAL",
+                            "REFERRAL",
+                            "ORGANIC",
+                            "EMAIL",
+                            "CAMPAIGN",
+                            "OTHER"
+                        ]
+                    },
+                    "lifecycleStage": {
+                        "type": "string",
+                        "enum": [
+                            "PROSPECT",
+                            "LEAD",
+                            "ONE_TIME",
+                            "RETURNING",
+                            "LOYAL",
+                            "VIP",
+                            "AT_RISK",
+                            "CHURNED",
+                            "WINBACK"
+                        ]
+                    },
+                    "rfmScore": { "type": "string" },
+                    "rfmSegment": { "type": "string" },
+                    "churnRiskScore": { "type": "number" },
+                    "totalOrders": { "type": "integer" },
+                    "totalSpent": { "type": "number" },
+                    "avgOrderValue": { "type": "number" },
+                    "lastOrderAt": { "type": "string", "format": "date-time" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "CustomerAnalytics": {
+                "type": "object",
+                "properties": {
+                    "rfmScore": { "type": "integer" },
+                    "rfmRecency": { "type": "integer" },
+                    "rfmFrequency": { "type": "integer" },
+                    "rfmMonetary": { "type": "integer" },
+                    "lifecycleStage": { "type": "string" },
+                    "churnRisk": { "type": "number" },
+                    "isVip": { "type": "boolean" },
+                    "totalSpent": { "type": "number" },
+                    "orderCount": { "type": "integer" },
+                    "averageOrderValue": { "type": "number" },
+                    "lastOrderDate": { "type": "string", "format": "date-time" }
+                }
+            },
+            "Order": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "customerId": { "type": "string" },
+                    "externalId": { "type": "string" },
+                    "subtotal": { "type": "number" },
+                    "taxAmount": { "type": "number" },
+                    "shippingAmount": { "type": "number" },
+                    "totalAmount": { "type": "number" },
+                    "currency": { "type": "string", "default": "USD" },
+                    "paymentStatus": {
+                        "type": "string",
+                        "enum": ["PENDING", "PAID", "FAILED", "REFUNDED"]
+                    },
+                    "shippingStatus": {
+                        "type": "string",
+                        "enum": [
+                            "PENDING",
+                            "PROCESSING",
+                            "SHIPPED",
+                            "DELIVERED",
+                            "CANCELLED"
+                        ]
+                    },
+                    "fulfillmentStatus": { "type": "string" },
+                    "source": { "type": "string" },
+                    "note": { "type": "string" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "Product": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "sku": { "type": "string" },
+                    "price": { "type": "number" },
+                    "compareAtPrice": { "type": "number" },
+                    "category": { "type": "string" },
+                    "inventory": { "type": "integer" },
+                    "status": {
+                        "type": "string",
+                        "enum": ["active", "draft", "archived"]
+                    },
+                    "imageUrl": { "type": "string" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "ImportJob": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "entityType": { "type": "string" },
+                    "fileName": { "type": "string" },
+                    "fileType": { "type": "string" },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "PENDING",
+                            "PROCESSING",
+                            "COMPLETED",
+                            "FAILED",
+                            "PARTIALLY_FAILED",
+                            "CANCELLED"
+                        ]
+                    },
+                    "totalRows": { "type": "integer" },
+                    "processedRows": { "type": "integer" },
+                    "successfulRows": { "type": "integer" },
+                    "failedRows": { "type": "integer" },
+                    "startedAt": { "type": "string", "format": "date-time" },
+                    "completedAt": { "type": "string", "format": "date-time" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "ExportJob": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "entityType": { "type": "string" },
+                    "format": {
+                        "type": "string",
+                        "enum": ["csv", "xlsx"]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["PENDING", "PROCESSING", "COMPLETED", "FAILED"]
+                    },
+                    "totalRows": { "type": "integer" },
+                    "fileName": { "type": "string" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "completedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "Segment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "filter": { "$ref": "#/components/schemas/SegmentFilter" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "Integration": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "provider": { "type": "string" },
+                    "name": { "type": "string" },
+                    "shopDomain": { "type": "string" },
+                    "syncStatus": { "type": "string" },
+                    "syncMode": {
+                        "type": "string",
+                        "enum": ["webhook", "polling", "manual"]
+                    },
+                    "isActive": { "type": "boolean" },
+                    "lastSyncedAt": { "type": "string", "format": "date-time" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "Role": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "permissions": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                        }
+                    },
+                    "isDefault": { "type": "boolean" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "CreateSegmentRequest": {
+                "type": "object",
+                "required": ["name", "filter"],
+                "properties": {
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "filter": { "$ref": "#/components/schemas/SegmentFilter" }
+                }
+            },
+            "UpdateSegmentRequest": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "filter": { "$ref": "#/components/schemas/SegmentFilter" }
+                }
+            },
+            "SegmentFilter": {
+                "oneOf": [
+                    { "$ref": "#/components/schemas/SegmentCondition" },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "and": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/SegmentFilter"
+                                }
+                            }
+                        },
+                        "required": ["and"]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "or": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/SegmentFilter"
+                                }
+                            }
+                        },
+                        "required": ["or"]
+                    }
+                ]
+            },
+            "SegmentCondition": {
+                "type": "object",
+                "required": ["field", "operator"],
+                "properties": {
+                    "field": { "type": "string" },
+                    "operator": {
+                        "type": "string",
+                        "enum": [
+                            "eq",
+                            "ne",
+                            "gt",
+                            "gte",
+                            "lt",
+                            "lte",
+                            "in",
+                            "contains"
+                        ]
+                    },
+                    "value": {
+                        "oneOf": [
+                            { "type": "string" },
+                            { "type": "number" },
+                            { "type": "boolean" },
+                            { "type": "array" }
+                        ]
+                    }
+                }
+            },
+            "TriggerRFMJobRequest": {
+                "type": "object",
+                "required": ["organizationId"],
+                "properties": {
+                    "organizationId": { "type": "string" },
+                    "customerId": { "type": "string" },
+                    "daysWindow": { "type": "integer", "default": 90 }
+                }
+            },
+            "TriggerLifecycleJobRequest": {
+                "type": "object",
+                "required": ["organizationId"],
+                "properties": {
+                    "organizationId": { "type": "string" }
+                }
+            },
+            "TriggerVipJobRequest": {
+                "type": "object",
+                "required": ["organizationId"],
+                "properties": {
+                    "organizationId": { "type": "string" },
+                    "percentile": { "type": "number", "default": 10 }
+                }
+            },
+            "CreateRoleRequest": {
+                "type": "object",
+                "required": ["name", "permissions"],
+                "properties": {
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "permissions": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                        }
+                    }
+                }
+            },
+            "UpdateRoleRequest": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "permissions": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                        }
+                    }
+                }
+            }
+        },
+        "responses": {
+            "BadRequest": {
+                "description": "Invalid request parameters",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            },
+            "Unauthorized": {
+                "description": "Authentication required",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "Insufficient permissions",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Resource not found",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            },
+            "InternalServerError": {
+                "description": "Internal server error",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            }
+        }
+    }
+}

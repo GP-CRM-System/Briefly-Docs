@@ -1,0 +1,62 @@
+---
+title: Introduction
+description: A high-performance, multi-tenant CRM backend for e-commerce businesses.
+icon: HomeIcon
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Briefly - E-Commerce CRM with AI Features
+
+A high-performance, multi-tenant CRM backend designed specifically for e-commerce businesses. Built with **Bun**, **Express**, **Prisma**, and **Better Auth**, it provides a robust foundation for customer lifecycle management, RFM analysis, and data migration.
+
+<Callout title="Quick Start">
+Ready to get started? Check out the [Installation Guide](/getting-started/installation) to set up your development environment in minutes.
+</Callout>
+
+## Features
+
+- **Multi-Tenant Architecture**: Robust organization and team management powered by [Better Auth](https://www.better-auth.com/)
+- **E-Commerce Intelligence**: Built-in support for RFM scoring, churn risk analysis, and customer lifecycle tracking
+- **Flexible Data Operations**: High-speed import/export for CSV and XLSX files with customizable field mapping
+- **Shopify Integration**: Sync customers, products, and orders via webhooks and REST API
+- **Enterprise-Grade Auth**: OAuth support (Google), role-based access control (RBAC), and secure session management
+- **Audit Logging**: Track critical actions across the system for security and compliance
+- **Asynchronous Processing**: Background jobs for heavy tasks using [BullMQ](https://bullmq.io/)
+
+<Callout title="API Documentation">
+All API endpoints are documented interactively. Visit the [API Reference](/docs/api) to explore endpoints with a built-in playground.
+</Callout>
+
+## Tech Stack
+
+| Component       | Technology              |
+| --------------- | ----------------------- |
+| Runtime         | Bun                     |
+| Framework       | Express.js              |
+| Database        | PostgreSQL + Prisma ORM |
+| Authentication  | Better Auth             |
+| Background Jobs | BullMQ (Redis)          |
+| Documentation   | Fumadocs + OpenAPI 3.1  |
+| Monitoring      | Sentry                  |
+
+## Quick Links
+
+<Cards>
+  <Card href="/docs/getting-started/installation" title="Installation">
+    Set up your development environment
+  </Card>
+  <Card href="/docs/getting-started/configuration" title="Configuration">
+    Configure environment variables and options
+  </Card>
+  <Card href="/docs/api" title="API Reference">
+    Interactive API documentation
+  </Card>
+  <Card href="/docs/guides/customers" title="Customer Management">
+    Learn how to manage customers
+  </Card>
+</Cards>
+
+<Callout type="warning" title="Production Ready">
+Ensure you configure rate limiting, caching, and monitoring before deploying to production.
+</Callout>

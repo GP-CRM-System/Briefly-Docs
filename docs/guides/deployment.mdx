@@ -1,0 +1,322 @@
+---
+title: Deployment
+description: Production deployment guide for Briefly CRM.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Deployment
+
+This guide covers deploying Briefly CRM to production environments.
+
+<Callout type="warning">
+    Always test in a staging environment before deploying to production.
+</Callout>
+
+## Prerequisites
+
+- Node.js 18+ or Bun 1.0+
+- PostgreSQL 14+
+- Redis 7+
+- Domain with SSL/TLS
+
+## Environment Setup
+
+### Required Environment Variables
+
+```bash
+# Server
+NODE_ENV=production
+PORT=3000
+
+# Database
+DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
+
+# Authentication
+BETTER_AUTH_SECRET=your-secure-secret-at-least-32-characters-long
+BETTER_AUTH_URL=https://your-domain.com
+
+# CORS
+CORS_ORIGIN=https://your-domain.com
+
+# Redis
+REDIS_HOST=redis-host
+REDIS_PORT=6379
+
+# Email (SMTP)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=user@example.com
+SMTP_PASS=your-password
+SMTP_FROM=CRM noreply@example.com
+
+# Optional: OAuth
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_CALLBACK_URL=https://your-domain.com/api/auth/callback/google
+
+# Optional: Monitoring
+SENTRY_DSN=https://xxx@sentry.io/xxx
+```
+
+## Build
+
+Generate Prisma client and build the application:
+
+```bash
+bun install
+bun run generate
+bun run build
+```
+
+<Callout title="Output Directory">
+    The build output is in the `dist/` directory (if using a bundler). This
+    project runs directly with Bun.
+</Callout>
+
+## Database Setup
+
+### Run Migrations
+
+```bash
+# Apply migrations
+bunx prisma migrate deploy
+```
+
+### Seed Database (Optional)
+
+```bash
+bun run seed
+```
+
+## Process Management
+
+### Using Systemd (Recommended for Linux)
+
+Create `/etc/systemd/system/briefly-crm.service`:
+
+```ini
+[Unit]
+Description=Briefly CRM API
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/briefly-crm
+ExecStart=/usr/local/bin/bun run start
+Restart=always
+RestartSec=10
+
+Environment=NODE_ENV=production
+Environment=DATABASE_URL=postgresql://...
+Environment=BETTER_AUTH_SECRET=...
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start the service:
+
+```bash
+sudo systemctl enable briefly-crm
+sudo systemctl start briefly-crm
+```
+
+### Using PM2
+
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start the application
+pm2 start bun --name "briefly-crm" -- run start
+
+# Setup startup script
+pm2 startup
+pm2 save
+```
+
+## Reverse Proxy
+
+### Nginx
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name api.your-domain.com;
+
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+### SSL/TLS
+
+Use Let's Encrypt for free SSL certificates:
+
+```bash
+# Install certbot
+sudo apt install certbot python3-certbot-nginx
+
+# Get certificate
+sudo certbot --nginx -d api.your-domain.com
+```
+
+## Database
+
+### PostgreSQL
+
+For production, use:
+
+- Managed PostgreSQL (e.g., Supabase, Neon, AWS RDS)
+- Connection pooling
+- SSL encryption
+
+Example connection string:
+
+```
+postgresql://user:password@host:5432/database?sslmode=require&pool_max_conns=20
+```
+
+### Backups
+
+Set up automated backups:
+
+```bash
+# Example: Daily backup with pg_dump
+0 2 * * * pg_dump -Fc briefly_prod > /backups/briefly_$(date +\%Y\%m\%d).dump
+```
+
+## Redis
+
+### Production Redis
+
+Use managed Redis or configure:
+
+```bash
+# Redis.conf settings
+requirepass your-redis-password
+bind 127.0.0.1
+port 6379
+maxmemory 256mb
+maxmemory-policy allkeys-lru
+```
+
+### Redis Persistence
+
+Enable AOF for persistence:
+
+```bash
+appendonly yes
+appendfsync everysec
+```
+
+## Monitoring
+
+### Sentry
+
+Set `SENTRY_DSN` to track errors:
+
+```bash
+SENTRY_DSN=https://xxx@sentry.io/xxx
+```
+
+### Health Check
+
+The API provides a health endpoint:
+
+```bash
+curl https://api.your-domain.com/health
+```
+
+## Scaling
+
+### Horizontal Scaling
+
+Run multiple instances behind a load balancer:
+
+```bash
+# Start multiple instances
+pm2 start bun --name "briefly-crm-1" -- run start -- --port 3001
+pm2 start bun --name "briefly-crm-2" -- run start -- --port 3002
+```
+
+### Load Balancer
+
+Distribute traffic across instances using Nginx or cloud load balancer.
+
+### Session Storage
+
+Sessions are stored in Redis. Ensure Redis is properly configured for high availability.
+
+## Security Checklist
+
+- [ ] Use HTTPS for all traffic
+- [ ] Set `NODE_ENV=production`
+- [ ] Use strong `BETTER_AUTH_SECRET`
+- [ ] Configure restrictive CORS
+- [ ] Enable database SSL
+- [ ] Use Redis authentication
+- [ ] Configure firewall rules
+- [ ] Set up monitoring and alerts
+- [ ] Enable rate limiting
+- [ ] Regular security updates
+
+## Troubleshooting
+
+### Application Won't Start
+
+1. Check environment variables are set
+2. Verify database connectivity
+3. Check Redis is running
+4. Review error logs
+
+### Slow Performance
+
+1. Check database indexes
+2. Review query performance
+3. Monitor Redis memory usage
+4. Check for N+1 queries
+
+### Connection Errors
+
+1. Verify connection strings
+2. Check firewall rules
+3. Ensure SSL certificates are valid
+
+## Deployment Platforms
+
+### Railway
+
+```bash
+# Set environment variables
+railway variables set DATABASE_URL=...
+railway variables set REDIS_URL=...
+```
+
+### Render
+
+```bash
+# Set environment variables in dashboard
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+```
+
+### Fly.io
+
+```bash
+fly secrets set DATABASE_URL=...
+fly secrets set REDIS_URL=...
+```

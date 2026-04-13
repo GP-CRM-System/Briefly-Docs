@@ -2,11 +2,128 @@
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
 
+:root {
+  --fd-layout-width: 1400px;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+}
+
 html {
   scrollbar-gutter: stable;
+  scroll-behavior: smooth;
 }
 
 html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;
+}
+
+::selection {
+  background: oklch(0.5 0.15 250 / 0.3);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0.02 250 / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.02 250 / 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0.02 280 / 0.3);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.02 280 / 0.5);
+}
+
+@theme {
+  --color-brand-50: oklch(0.98 0.01 250);
+  --color-brand-100: oklch(0.95 0.02 250);
+  --color-brand-200: oklch(0.89 0.05 250);
+  --color-brand-300: oklch(0.78 0.10 250);
+  --color-brand-400: oklch(0.65 0.16 250);
+  --color-brand-500: oklch(0.55 0.20 250);
+  --color-brand-600: oklch(0.48 0.18 250);
+  --color-brand-700: oklch(0.40 0.14 250);
+  --color-brand-800: oklch(0.32 0.10 250);
+  --color-brand-900: oklch(0.25 0.08 250);
+  --color-brand-950: oklch(0.15 0.05 250);
+
+  --color-fd-primary: oklch(0.55 0.20 250);
+  --color-fd-primary-foreground: oklch(0.98 0.01 250);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+.dark {
+  --color-brand-50: oklch(0.98 0.01 270);
+  --color-brand-100: oklch(0.95 0.02 270);
+  --color-brand-200: oklch(0.89 0.05 270);
+  --color-brand-300: oklch(0.78 0.10 270);
+  --color-brand-400: oklch(0.65 0.16 270);
+  --color-brand-500: oklch(0.55 0.20 270);
+  --color-brand-600: oklch(0.62 0.18 270);
+  --color-brand-700: oklch(0.70 0.14 270);
+  --color-brand-800: oklch(0.78 0.10 270);
+  --color-brand-900: oklch(0.88 0.06 270);
+  --color-brand-950: oklch(0.95 0.03 270);
+
+  --color-fd-primary: oklch(0.70 0.16 270);
+  --color-fd-primary-foreground: oklch(0.15 0.02 270);
+}
+
+a {
+  transition: color 0.15s ease;
+}
+
+button {
+  transition: all 0.15s ease;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  letter-spacing: -0.02em;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+.prose pre {
+  border: 1px solid oklch(0.85 0.02 250 / 0.2);
+}
+
+.dark .prose pre {
+  border-color: oklch(0.85 0.02 270 / 0.15);
+}
+
+#nd-sidebar nav > div > a,
+#nd-toc nav > div > a {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+[data-fd-color="primary"] {
+  box-shadow: 0 1px 2px 0 oklch(0.55 0.20 250 / 0.1);
+}
+
+.dark [data-fd-color="primary"] {
+  box-shadow: 0 1px 2px 0 oklch(0.70 0.16 270 / 0.2);
 }
